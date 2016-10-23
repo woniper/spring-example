@@ -1,0 +1,104 @@
+buildscript {
+	ext {
+		springBootVersion = '1.4.1.RELEASE'
+	}
+	repositories {
+		mavenCentral()
+	}
+	dependencies {
+		classpath("org.springframework.boot:spring-boot-gradle-plugin:${springBootVersion}")
+	}
+}
+
+apply plugin: 'java'
+apply plugin: 'eclipse'
+apply plugin: 'spring-boot'
+apply plugin: 'idea'
+
+jar {
+	baseName = 'spring-boot-querydsl'
+	version = '0.0.1-SNAPSHOT'
+}
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+repositories {
+    mavenCentral()
+}
+
+springBoot {
+    mainClass = "net.woniper.querydsl.SpringBootQuerydslApplication"
+}
+
+/**
+ * querydsl QClass 생성 경로
+ */
+sourceSets {
+    generated {
+        java {
+            srcDirs = ["src/main/generated"]
+        }
+    }
+}
+
+/**
+ * querydsl QClass 생성 Task
+ */
+task generateQueryDSL(type: JavaCompile, group: 'build') {
+    source = sourceSets.main.java
+    classpath = configurations.compile
+    options.compilerArgs = [
+            "-proc:only",
+            "-processor",
+            "com.querydsl.apt.jpa.JPAAnnotationProcessor"
+    ]
+    destinationDir = sourceSets.generated.java.srcDirs.iterator().next()
+}
+
+compileJava {
+    dependsOn generateQueryDSL
+    source generateQueryDSL.destinationDir
+}
+
+compileGeneratedJava {
+    dependsOn generateQueryDSL
+    options.warnings = false
+    classpath += sourceSets.main.runtimeClasspath
+}
+
+/**
+ * idea(intellij)에서 querydsl 사용 시 QClass source로 등록
+ */
+idea {
+    module {
+        inheritOutputDirs = false
+        outputDir = file("$buildDir/classes/main/")
+        sourceDirs += file("src/main/generated")
+    }
+}
+
+/**
+ * gradle clean task 실행 시 querydsl 경로 제거
+ */
+clean {
+    delete sourceSets.generated.java.srcDirs
+}
+
+dependencies {
+    def querydslVersion = "4.1.4"
+
+    compile('org.springframework.boot:spring-boot-starter-data-jpa')
+    runtime('com.h2database:h2')
+    testCompile('org.springframework.boot:spring-boot-starter-test')
+
+    /**
+     * querydsl dependency
+     */
+    compile ("com.querydsl:querydsl-core:$querydslVersion")
+    compile ("com.querydsl:querydsl-apt:$querydslVersion")
+    compile ("com.querydsl:querydsl-jpa:$querydslVersion")
+
+}
+
+
